@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mental Maths Trainer</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .question { font-size: 2em; margin-top: 20px; }
+        .answer-input { font-size: 1.5em; margin-top: 10px; }
+        .home-screen, .game-screen, .score-screen { display: none; }
+        .timer { font-size: 1.5em; margin-top: 10px; }
+        .button { margin-top: 20px; padding: 10px 20px; font-size: 1.2em; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Home Screen -->
+        <div class="home-screen">
+            <h1>Mental Maths Trainer</h1>
+            <label for="topic">Choose a topic:</label>
+            <select id="topic">
+                <option value="times_tables">Times tables up to 12x12</option>
+                <option value="multiply_by_11">Multiplying by 11</option>
+                <option value="square_ending_in_5">Squaring numbers ending in 5</option>
+                <option value="multiply_same_first_digit_last_add_10">Multiplying numbers with same first digit whose last digits add up to 10</option>
+                <option value="multiply_10_to_20">Multiplying numbers between 10 and 20</option>
+                <option value="square_two_digit_numbers">Squaring 2-digit numbers</option>
+            </select>
+            <br>
+            <label for="timeLimit">Choose a time limit (seconds):</label>
+            <input type="number" id="timeLimit" min="10" max="600" value="30">
+            <br>
+            <button class="button" onclick="begin()">Begin</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div class="game-screen">
+            <div class="timer" id="timer">Time left: <span id="timeLeft"></span> seconds</div>
+            <div class="question" id="question"></div>
+            <input type="text" id="answer" class="answer-input" placeholder="Your answer" oninput="checkAnswer()">
+        </div>
+
+        <!-- Score Screen -->
+        <div class="score-screen">
+            <h1>Your Score</h1>
+            <div id="score"></div>
+            <button class="button" onclick="showHomeScreen()">Back to Home</button>
+        </div>
+    </div>
+
+    <script>
+        let currentAnswer;
+        let timerInterval;
+        let timeLeft;
+        let score;
+
+        function showHomeScreen() {
+            document.querySelector('.home-screen').style.display = 'block';
+            document.querySelector('.game-screen').style.display = 'none';
+            document.querySelector('.score-screen').style.display = 'none';
+        }
+
+        function showGameScreen() {
+            document.querySelector('.home-screen').style.display = 'none';
+            document.querySelector('.game-screen').style.display = 'block';
+            document.querySelector('.score-screen').style.display = 'none';
+            getQuestion();
+        }
+
+        function showScoreScreen() {
+            document.querySelector('.home-screen').style.display = 'none';
+            document.querySelector('.game-screen').style.display = 'none';
+            document.querySelector('.score-screen').style.display = 'block';
+            document.getElementById('score').innerText = `Correct Answers: ${score}`;
+        }
+
+        function begin() {
+            const topic = document.getElementById('topic').value;
+            const timeLimit = parseInt(document.getElementById('timeLimit').value, 10);
+            timeLeft = timeLimit;
+            score = 0;
+
+            if (isNaN(timeLimit) || timeLimit <= 0) {
+                alert("Please enter a valid time limit.");
+                return;
+            }
+
+            showGameScreen();
+            startTimer(timeLimit);
+        }
+
+        function startTimer(duration) {
+            document.getElementById('timeLeft').innerText = duration;
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timeLeft').innerText = timeLeft;
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    showScoreScreen();
+                }
+            }, 1000);
+        }
+
+        function getQuestion() {
+            const topic = document.getElementById('topic').value;
+            fetch('/get_question', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ topic: topic })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('question').innerText = data.question;
+                currentAnswer = data.answer;
+                document.getElementById('answer').value = '';  // Clear the input field
+                document.getElementById('answer').focus();    // Focus on the input field
+            })
+            .catch(error => {
+                console.error('Error fetching question:', error);
+            });
+        }
+
+        function checkAnswer() {
+            const userInput = document.getElementById('answer').value;
+            const parsedAnswer = parseFloat(userInput);
+            
+            // Check if the input matches the current answer
+            if (!isNaN(parsedAnswer) && parsedAnswer === currentAnswer) {
+                score++;  // Increment score for a correct answer
+                getQuestion(); // Fetch a new question if the answer is correct
+            }
+        }
+
+        window.onload = showHomeScreen; // Show home screen on page load
+    </script>
+</body>
+</html>
